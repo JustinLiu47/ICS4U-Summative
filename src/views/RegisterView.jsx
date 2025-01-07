@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistration } from '../context/RegistrationContext';
-import { useAuth } from '../context/AuthContext';
 import Header from "../components/Header";
 
 const genreList = [
@@ -36,20 +35,22 @@ function RegisterView() {
     errorMessage,
     handleInputChange,
     handleGenreChange,
-    handleSubmit,
     currentUser,
+    handleSubmit,
+    loginUser
   } = useRegistration();
-
-  const { login } = useAuth();
 
   const enhancedHandleSubmit = async (event) => {
     event.preventDefault();
-    const success = await handleSubmit(event);
-    if (success) {
-      login();
 
-      navigate('/');
+    const registrationSuccess = await handleSubmit(event);
+    
+    if (registrationSuccess) {
+      const loginSuccess = await loginUser(email, password);
 
+      if (loginSuccess) {
+        navigate('/');
+      }
     }
   };
 

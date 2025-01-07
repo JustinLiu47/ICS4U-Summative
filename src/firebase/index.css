@@ -1,0 +1,179 @@
+* {
+  padding: 0px;
+  margin: 0px;
+}
+
+.header {
+  background: linear-gradient(90deg, rgb(255, 0, 0) 0%, rgb(100, 0, 0) 100%);
+  display: grid;
+  grid-template-areas: "a b title signup signin";
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  width: 100%;
+  height: 175px;
+}
+
+.title {
+  grid-area: title;
+  color: white;
+  text-align: center;
+  font-size: 105px;
+  padding: 20px 0;
+  /* Center the title with padding */
+  font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+}
+
+.balance1 {
+  grid-area: a;
+  border-radius: 5px;
+  border-width: 0px;
+  padding: 20px;
+  margin-left: 10px;
+  width: 175px;
+  visibility: hidden;
+}
+
+.balance2 {
+  grid-area: b;
+  border-radius: 5px;
+  border-width: 0px;
+  padding: 20px;
+  margin-left: 10px;
+  width: 175px;
+  visibility: hidden;
+}
+
+.signup {
+  grid-area: signup;
+  border-radius: 5px;
+  background-color: lawngreen;
+  border-width: 0px;
+  padding: 20px;
+  margin-right: 10px;
+  width: 175px;
+  font-size: 30px;
+}
+
+.signup:hover {
+  background-color: rgb(0, 180, 0);
+}
+
+.signin {
+  grid-area: signin;
+  border-radius: 5px;
+  background-color: aqua;
+  border-width: 0px;
+  padding: 20px;
+  margin-right: 10px;
+  width: 175px;
+  font-size: 30px;
+}
+
+.signin:hover {
+  background-color: rgb(0, 199, 199);
+}
+
+.hero {
+  background: linear-gradient(0deg, rgb(255, 0, 0) 0%, yellow 50%, blue 100%);
+  display: grid;
+  grid-template-areas:
+    "a b"
+    "c b";
+  grid-template-columns: auto right;
+  grid-template-columns: auto right;
+  justify-items: right;
+  height: 700px;
+}
+
+.HeroImg {
+  grid-area: b;
+  margin-right: 0px;
+  height: 700px;
+  opacity: 0.8;
+}
+
+.HeroTitle {
+  color: white;
+  background-color: rgba(0, 0, 0, 0.5);
+
+  padding: 20px;
+  font-size: 50px;
+}
+
+.HeroText {
+  color: white;
+  background-color: rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  font-size: 30px;
+}
+
+.featured {
+  background: linear-gradient(0deg, rgb(255, 255, 255) 0%, rgb(127, 127, 127) 50%, black 100%);
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  width: auto;
+  height: 875px;
+  padding: 30px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  background-color: burlywood;
+  height: 125px;
+  padding: 0 20px;
+}
+
+.footerItem {
+  text-decoration: none;
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  color: #333;
+  padding: 10px 20px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+  margin-right: 10px;
+}
+
+.footerItem:hover {
+  background-color: #f0e68c;
+}
+
+.section_title {
+  width: 100%;
+  background-color: black;
+  color: white;
+  font-family: Cambria, Cochin, Georgia, Times, 'Times New Roman', serif;
+  font-size: 50px;
+  text-align: center;
+}
+
+.posterPicture {
+  height: 350px;
+  width: 250px;
+}
+
+.poster {
+  background-color: lightgray;
+  width: 250px;
+  height: 350px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  display: flex;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.poster:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+}
