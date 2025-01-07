@@ -1,11 +1,9 @@
+import { Outlet } from "react-router-dom";
 import Header from "../components/Header";
-import Hero from "../components/Hero";
-import Feature from "../components/Feature";
-import Footer from "../components/Footer";
 import Genres from "../components/Genres";
 import { useRegistration } from "../context/RegistrationContext";
 
-function HomeView() {
+function MoviesView() {
   const { selectedGenres } = useRegistration();
 
   const genreList = [
@@ -34,16 +32,18 @@ function HomeView() {
   );
 
   return (
-    <div>
+    <div className="movies-view-container">
       <Header />
-      <div>
-        <Hero />
-        <Feature />
-        <Genres genreList={filteredGenres} />
+      <div className="movies-content">
+        <div className="genres-sidebar">
+          <Genres genreList={filteredGenres} />
+        </div>
+        <div className="movie-detail-area">
+          <Outlet />
+        </div>
       </div>
-      <Footer />
     </div>
   );
 }
 
-export default HomeView;
+export default MoviesView;
