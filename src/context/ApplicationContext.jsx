@@ -1,10 +1,12 @@
 import React, { createContext, useState, useContext } from 'react';
 
-const RegistrationContext = createContext();
+const ApplicationContext = createContext();
 
-export const useRegistration = () => useContext(RegistrationContext);
-
-export const RegistrationProvider = ({ children }) => {
+export const ApplicationProvider = ({ children }) => {
+  // Authentication State
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // User-related State
   const [registeredUsers, setRegisteredUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
@@ -16,6 +18,11 @@ export const RegistrationProvider = ({ children }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [cart, setCart] = useState([]);
 
+  // Authentication functions
+  const login = () => setIsLoggedIn(true);
+  const logout = () => setIsLoggedIn(false);
+
+  // Registration functions
   const registerUser = (user) => {
     if (registeredUsers.some((u) => u.email === user.email)) {
       setErrorMessage('This email is already registered.');
@@ -40,76 +47,15 @@ export const RegistrationProvider = ({ children }) => {
   };
 
   const updateUserDetails = (updatedUser) => {
-    if (
-      currentUser?.firstName === updatedUser.firstName &&
-      currentUser?.lastName === updatedUser.lastName &&
-      JSON.stringify(currentUser?.selectedGenres) === JSON.stringify(updatedUser.selectedGenres)
-    ) {
-      return;
-    }
-
     const updatedUsers = registeredUsers.map((user) =>
       user.email === updatedUser.email ? { ...user, ...updatedUser } : user
     );
-
     setRegisteredUsers(updatedUsers);
     setCurrentUser(updatedUser);
-
-    alert("Profile updated successfully!");
+    alert('Profile updated successfully!');
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-  
-    if (!firstName || !lastName || !email || !password) {
-      setErrorMessage('All fields are required.');
-      return false;
-    }
-  
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return false;
-    }
-
-    if (selectedGenres.length < 10) {
-      setErrorMessage('Please select at least 10 genres.');
-      return false;
-    }
-  
-    const user = {
-      firstName,
-      lastName,
-      email,
-      password,
-      selectedGenres,
-    };
-  
-    const success = registerUser(user);
-    if (!success) {
-      return false;
-    }
-  
-    setErrorMessage('');
-    return true;
-  };
-
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    if (name === 'firstName') setFirstName(value);
-    if (name === 'lastName') setLastName(value);
-    if (name === 'email') setEmail(value);
-    if (name === 'password') setPassword(value);
-    if (name === 'confirmPassword') setConfirmPassword(value);
-  };
-
-  const handleGenreChange = (id) => {
-    setSelectedGenres((prevSelectedGenres) =>
-      prevSelectedGenres.includes(id)
-        ? prevSelectedGenres.filter((genreId) => genreId !== id)
-        : [...prevSelectedGenres, id]
-    );
-  };
-
+  // Cart management functions
   const addToCart = (movie) => {
     if (!currentUser) {
       setErrorMessage('You need to be logged in to add items to the cart.');
@@ -142,9 +88,65 @@ export const RegistrationProvider = ({ children }) => {
     return currentUser?.cart?.some((movie) => movie.id === movieId) || false;
   };
 
+  // Form handling functions
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!firstName || !lastName || !email || !password) {
+      setErrorMessage('All fields are required.');
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+      return false;
+    }
+
+    if (selectedGenres.length < 10) {
+      setErrorMessage('Please select at least 10 genres.');
+      return false;
+    }
+
+    const user = {
+      firstName,
+      lastName,
+      email,
+      password,
+      selectedGenres,
+    };
+
+    const success = registerUser(user);
+    if (!success) {
+      return false;
+    }
+
+    setErrorMessage('');
+    return true;
+  };
+
+  const handleInputChange = (event) => {
+    const { name, value } = event.target;
+    if (name === 'firstName') setFirstName(value);
+    if (name === 'lastName') setLastName(value);
+    if (name === 'email') setEmail(value);
+    if (name === 'password') setPassword(value);
+    if (name === 'confirmPassword') setConfirmPassword(value);
+  };
+
+  const handleGenreChange = (id) => {
+    setSelectedGenres((prevSelectedGenres) =>
+      prevSelectedGenres.includes(id)
+        ? prevSelectedGenres.filter((genreId) => genreId !== id)
+        : [...prevSelectedGenres, id]
+    );
+  };
+
   return (
-    <RegistrationContext.Provider
+    <ApplicationContext.Provider
       value={{
+        isLoggedIn,
+        login,
+        logout,
         firstName,
         lastName,
         email,
@@ -158,6 +160,7 @@ export const RegistrationProvider = ({ children }) => {
         handleGenreChange,
         handleSubmit,
         loginUser,
+        registerUser,
         updateUserDetails,
         addToCart,
         removeFromCart,
@@ -166,6 +169,8 @@ export const RegistrationProvider = ({ children }) => {
       }}
     >
       {children}
-    </RegistrationContext.Provider>
+    </ApplicationContext.Provider>
   );
 };
+
+export const useApplicationContext = () => useContext(ApplicationContext);

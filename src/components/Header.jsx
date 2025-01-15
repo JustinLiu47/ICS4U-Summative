@@ -1,11 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { useRegistration } from "../context/RegistrationContext";
+import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
 
 function Header() {
     const navigate = useNavigate();
-    const { isLoggedIn, logout } = useAuth();
-    const { currentUser } = useRegistration();
+    const { isLoggedIn, logout, currentUser } = useApplicationContext(); // Access from unified context
     
     function handleLogout() {
         logout();

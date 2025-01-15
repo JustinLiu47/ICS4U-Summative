@@ -1,8 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
-import { useRegistration } from "../context/RegistrationContext";
+import { useNavigate, useParams } from "react-router-dom";
+import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
 
 function GenreView() {
     const [movies, setMovies] = useState([]);
@@ -10,7 +9,7 @@ function GenreView() {
     const [totalPages, setTotalPages] = useState(1);
     const params = useParams();
     const navigate = useNavigate();
-    const { addToCart, currentUser, getCart } = useRegistration();
+    const { addToCart, currentUser, getCart } = useApplicationContext(); // Access from unified context
     const cart = getCart();
 
     useEffect(() => {

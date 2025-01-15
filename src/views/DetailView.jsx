@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useRegistration } from "../context/RegistrationContext";
+import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
 
 function DetailView() {
   const [movie, setMovie] = useState({});
   const params = useParams();
   const navigate = useNavigate();
-  const { currentUser, addToCart, isMovieInCart } = useRegistration();
+  const { currentUser, addToCart, isMovieInCart } = useApplicationContext(); // Access from unified context
 
   useEffect(() => {
     (async function getMovie() {

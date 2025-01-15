@@ -1,12 +1,12 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useRegistration } from "../context/RegistrationContext";
+import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
 
 function Feature() {
   const [movies, setMovies] = useState([]);
   const navigate = useNavigate();
-  const { addToCart, currentUser, getCart } = useRegistration();
+  const { addToCart, currentUser, getCart } = useApplicationContext(); // Updated context usage
   const cart = getCart();
 
   function shuffle(array) {
@@ -29,6 +29,7 @@ function Feature() {
     }
     addToCart(movie);
   };
+
   const isMovieInCart = (movieId) => {
     return cart.some((item) => item.id === movieId);
   };

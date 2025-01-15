@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRegistration } from '../context/RegistrationContext';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/ApplicationContext';
 import Header from "../components/Header";
 
 function LoginView() {
