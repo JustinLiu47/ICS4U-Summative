@@ -54,6 +54,7 @@ const useRegistration = () => {
     registerUser,
     loginUser,
     errorMessage,
+    setErrorMessage,
   };
 };
 
@@ -100,7 +101,7 @@ const useCart = () => {
 
 export const ApplicationProvider = ({ children }) => {
   const { isLoggedIn, currentUser, login, logout } = useAuth();
-  const { registeredUsers, registerUser, loginUser, errorMessage } = useRegistration();
+  const { registeredUsers, registerUser, loginUser, errorMessage, setErrorMessage } = useRegistration();
   const { selectedGenres, handleGenreChange } = useGenres();
   const { cart, addToCart, removeFromCart, getCart, isMovieInCart } = useCart();
 
@@ -113,22 +114,17 @@ export const ApplicationProvider = ({ children }) => {
 
   const handleSubmit = async (event, firstName, lastName, email, password, confirmPassword) => {
     event.preventDefault();
-
-    if (!firstName || !lastName || !email || !password) {
-      setErrorMessage('All fields are required.');
-      return false;
-    }
-
+  
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match.');
       return false;
     }
-
+  
     if (selectedGenres.length < 10) {
       setErrorMessage('Please select at least 10 genres.');
       return false;
     }
-
+  
     const user = {
       firstName,
       lastName,
@@ -137,12 +133,12 @@ export const ApplicationProvider = ({ children }) => {
       selectedGenres,
       cart: [],
     };
-
+  
     const success = registerUser(user);
     if (!success) {
       return false;
     }
-
+  
     setErrorMessage('');
     return true;
   };
@@ -154,6 +150,7 @@ export const ApplicationProvider = ({ children }) => {
         currentUser,
         selectedGenres,
         errorMessage,
+        setErrorMessage,
         cart,
         login,
         logout,

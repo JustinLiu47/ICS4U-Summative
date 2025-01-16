@@ -35,21 +35,16 @@ function RegisterView() {
     errorMessage,
     handleInputChange,
     handleGenreChange,
-    handleSubmit,
-    loginUser
+    handleSubmit
   } = useApplicationContext();
 
   const enhancedHandleSubmit = async (event) => {
     event.preventDefault();
 
-    const registrationSuccess = await handleSubmit(event);
+    const registrationSuccess = await handleSubmit(event, firstName, lastName, email, password, confirmPassword);
 
     if (registrationSuccess) {
-      const loginSuccess = await loginUser(email, password);
-
-      if (loginSuccess) {
-        navigate('/');
-      }
+      navigate('/login');
     }
   };
 
@@ -118,7 +113,6 @@ function RegisterView() {
                   name="genre"
                   value={id}
                   onChange={() => handleGenreChange(id)}
-                  checked={currentUser?.selectedGenres.includes(id)}
                 />
                 {genre}
               </label>
