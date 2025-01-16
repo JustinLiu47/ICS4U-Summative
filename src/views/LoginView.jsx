@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistration } from '../context/RegistrationContext';
-import { useAuth } from '../context/ApplicationContext';
+import { useApplicationContext } from '../context/ApplicationContext';
 import Header from "../components/Header";
 
 function LoginView() {
   const navigate = useNavigate();
-  const { loginUser, errorMessage } = useRegistration();
-  const { login } = useAuth();
+  const { loginUser, errorMessage, login } = useApplicationContext();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +36,6 @@ function LoginView() {
 
     if (success) {
       login();
-
       navigate('/');
     } else {
       alert("Invalid login credentials. Please try again.");

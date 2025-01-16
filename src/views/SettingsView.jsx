@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRegistration } from '../context/RegistrationContext';
+import { useApplicationContext } from '../context/ApplicationContext';
 import Header from "../components/Header";
 
 const genreList = [
@@ -31,8 +31,8 @@ function SettingsView() {
     updateUserDetails,
     selectedGenres,
     handleGenreChange,
-    errorMessage, // Use errorMessage from context to show errors
-  } = useRegistration();
+    errorMessage,
+  } = useApplicationContext();
 
   const [firstName, setFirstName] = useState(currentUser?.firstName || '');
   const [lastName, setLastName] = useState(currentUser?.lastName || '');
@@ -50,7 +50,6 @@ function SettingsView() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Check for genre selection count
     if (selectedGenres.length < 10) {
       alert('Please select at least 10 genres.');
       return;

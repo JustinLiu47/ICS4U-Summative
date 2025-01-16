@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
+import { useApplicationContext } from "../context/ApplicationContext";
 
 function Header() {
     const navigate = useNavigate();
-    const { isLoggedIn, logout, currentUser } = useApplicationContext(); // Access from unified context
+    const { isLoggedIn, logout, currentUser } = useApplicationContext();
     
     function handleLogout() {
         logout();

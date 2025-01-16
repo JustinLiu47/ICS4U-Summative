@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
+import { useApplicationContext } from "../context/ApplicationContext";
 
 function DetailView() {
   const [movie, setMovie] = useState({});
   const params = useParams();
   const navigate = useNavigate();
-  const { currentUser, addToCart, isMovieInCart } = useApplicationContext(); // Access from unified context
+  const { currentUser, addToCart, isMovieInCart } = useApplicationContext();
 
   useEffect(() => {
     (async function getMovie() {

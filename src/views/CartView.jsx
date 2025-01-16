@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useApplicationContext } from '../context/ApplicationContext'; // Updated import
+import { useApplicationContext } from '../context/ApplicationContext';
 import Header from '../components/Header';
 
 function CartView() {
-  const { currentUser, getCart, removeFromCart } = useApplicationContext(); // Access from unified context
+  const { currentUser, getCart, removeFromCart } = useApplicationContext();
   const cart = getCart();
 
   const handleRemoveFromCart = (movieId) => {

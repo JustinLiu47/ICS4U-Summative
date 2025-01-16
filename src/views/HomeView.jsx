@@ -3,10 +3,10 @@ import Hero from "../components/Hero";
 import Feature from "../components/Feature";
 import Footer from "../components/Footer";
 import Genres from "../components/Genres";
-import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
+import { useApplicationContext } from "../context/ApplicationContext";
 
 function HomeView() {
-  const { selectedGenres } = useApplicationContext(); // Access from unified context
+  const { selectedGenres } = useApplicationContext();
 
   const genreList = [
     { genre: "Action", id: 28 },

@@ -1,10 +1,10 @@
 import { Outlet } from "react-router-dom";
 import Header from "../components/Header";
 import Genres from "../components/Genres";
-import { useRegistration } from "../context/RegistrationContext";
+import { useApplicationContext } from "../context/ApplicationContext";
 
 function MoviesView() {
-  const { selectedGenres } = useRegistration();
+  const { selectedGenres } = useApplicationContext();
 
   const genreList = [
     { genre: "Action", id: 28 },
