@@ -56,7 +56,12 @@ function SettingsView() {
     }
 
     if (currentUser) {
-      updateUserDetails({ firstName, lastName, email: currentUser.email, selectedGenres });
+      updateUserDetails({
+        firstName,
+        lastName,
+        email: currentUser.email,
+        selectedGenres,
+      });
     }
   };
 

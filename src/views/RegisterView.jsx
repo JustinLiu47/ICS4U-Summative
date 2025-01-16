@@ -35,7 +35,6 @@ function RegisterView() {
     errorMessage,
     handleInputChange,
     handleGenreChange,
-    currentUser,
     handleSubmit,
     loginUser
   } = useApplicationContext();

@@ -27,6 +27,7 @@ function LoginView() {
 
   const handleLogin = async (event) => {
     event.preventDefault();
+
     if (!firstName || !lastName || !email || !password) {
       alert("All fields are required.");
       return;
