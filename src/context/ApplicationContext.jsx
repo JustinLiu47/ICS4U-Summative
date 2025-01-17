@@ -1,4 +1,7 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { auth, firestore } from '../firebase';
 
 const ApplicationContext = createContext();
 
@@ -6,14 +9,34 @@ const useAuth = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
-  const login = (user) => {
-    setIsLoggedIn(true);
-    setCurrentUser(user);
+  const login = (email, password) => {
+    signInWithEmailAndPassword(auth, email, password)
+      .then((userCredential) => {
+        setIsLoggedIn(true);
+        setCurrentUser(userCredential.user);
+      })
+      .catch((error) => {
+        console.error(error.message);
+      });
   };
 
   const logout = () => {
-    setIsLoggedIn(false);
-    setCurrentUser(null);
+    signOut(auth).then(() => {
+      setIsLoggedIn(false);
+      setCurrentUser(null);
+    });
+  };
+
+  const loginWithGoogle = () => {
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        setIsLoggedIn(true);
+        setCurrentUser(result.user);
+      })
+      .catch((error) => {
+        console.error(error.message);
+      });
   };
 
   return {
@@ -21,36 +44,52 @@ const useAuth = () => {
     currentUser,
     login,
     logout,
+    loginWithGoogle,
   };
 };
 
 const useRegistration = () => {
-  const [registeredUsers, setRegisteredUsers] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const registerUser = (user) => {
-    if (registeredUsers.some((u) => u.email === user.email)) {
-      setErrorMessage('This email is already registered.');
-      return false;
+  const registerUser = async (user) => {
+    try {
+      await createUserWithEmailAndPassword(auth, user.email, user.password);
+      const userId = auth.currentUser.uid;
+      const userDocRef = doc(firestore, 'users', userId);
+
+      const userData = {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        selectedGenres: user.selectedGenres || [],
+        purchaseHistory: [],
+      };
+
+      await setDoc(userDocRef, userData);
+    } catch (error) {
+      setErrorMessage('Error registering user: ' + error.message);
     }
-    setRegisteredUsers([...registeredUsers, user]);
-    setErrorMessage('');
-    return true;
   };
 
-  const loginUser = (email, password) => {
-    const user = registeredUsers.find((u) => u.email === email && u.password === password);
-    if (user) {
-      setErrorMessage('');
-      return user;
-    } else {
+  const loginUser = async (email, password) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      const userId = auth.currentUser.uid;
+      const userDocRef = doc(firestore, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        return userDoc.data();
+      } else {
+        return null;
+      }
+    } catch (error) {
       setErrorMessage('Invalid email or password.');
       return null;
     }
   };
 
   return {
-    registeredUsers,
     registerUser,
     loginUser,
     errorMessage,
@@ -99,48 +138,66 @@ const useCart = () => {
   };
 };
 
+const handlePurchase = async (cart) => {
+  const userId = auth.currentUser.uid;
+  if (!cart || cart.length === 0) return;
+
+  try {
+    const purchaseData = {
+      items: cart,
+      purchaseDate: new Date(),
+    };
+
+    const userDocRef = doc(firestore, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const updatedUser = { ...userData };
+      updatedUser.purchaseHistory.push(purchaseData);
+
+      await updateDoc(userDocRef, {
+        purchaseHistory: updatedUser.purchaseHistory
+      });
+
+      localStorage.removeItem('cart');
+    }
+  } catch (error) {
+    console.error('Error saving purchase history:', error);
+  }
+};
+
 export const ApplicationProvider = ({ children }) => {
-  const { isLoggedIn, currentUser, login, logout } = useAuth();
-  const { registeredUsers, registerUser, loginUser, errorMessage, setErrorMessage } = useRegistration();
+  const { isLoggedIn, currentUser, login, logout, loginWithGoogle } = useAuth();
+  const { registerUser, loginUser, errorMessage, setErrorMessage } = useRegistration();
   const { selectedGenres, handleGenreChange } = useGenres();
   const { cart, addToCart, removeFromCart, getCart, isMovieInCart } = useCart();
 
-  const updateUserDetails = (updatedUser) => {
-    const updatedUsers = registeredUsers.map((user) =>
-      user.email === updatedUser.email ? { ...user, ...updatedUser } : user
-    );
-    setRegisteredUsers(updatedUsers);
-  };
+  useEffect(() => {
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true);
+        setCurrentUser(user);
+      } else {
+        setIsLoggedIn(false);
+        setCurrentUser(null);
+      }
+    });
+  }, []);
 
-  const handleSubmit = async (event, firstName, lastName, email, password, confirmPassword) => {
-    event.preventDefault();
-  
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match.');
-      return false;
+  const updateUserDetails = async (updatedUser) => {
+    const userId = auth.currentUser.uid;
+    const userDocRef = doc(firestore, 'users', userId);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const updatedUserData = {
+        ...userDoc.data(),
+        ...updatedUser,
+      };
+
+      await updateDoc(userDocRef, updatedUserData);
     }
-  
-    if (selectedGenres.length < 10) {
-      setErrorMessage('Please select at least 10 genres.');
-      return false;
-    }
-  
-    const user = {
-      firstName,
-      lastName,
-      email,
-      password,
-      selectedGenres,
-      cart: [],
-    };
-  
-    const success = registerUser(user);
-    if (!success) {
-      return false;
-    }
-  
-    setErrorMessage('');
-    return true;
   };
 
   return (
@@ -154,10 +211,11 @@ export const ApplicationProvider = ({ children }) => {
         cart,
         login,
         logout,
+        loginWithGoogle,
         registerUser,
         loginUser,
         updateUserDetails,
-        handleSubmit,
+        handlePurchase,
         handleGenreChange,
         addToCart,
         removeFromCart,

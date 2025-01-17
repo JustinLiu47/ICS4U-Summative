@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApplicationContext } from '../context/ApplicationContext';
 import Header from "../components/Header";
@@ -35,16 +35,35 @@ function RegisterView() {
     errorMessage,
     handleInputChange,
     handleGenreChange,
-    handleSubmit
+    handleSubmit,
+    loginWithGoogle,
+    selectedGenres
   } = useApplicationContext();
+
+  const [isGoogleRegister, setIsGoogleRegister] = useState(false);
 
   const enhancedHandleSubmit = async (event) => {
     event.preventDefault();
 
-    const registrationSuccess = await handleSubmit(event, firstName, lastName, email, password, confirmPassword);
+    if (isGoogleRegister) {
+      const registrationSuccess = await handleSubmit(event, firstName, lastName, email, '', '');
+      if (registrationSuccess) {
+        navigate('/login');
+      }
+    } else {
+      const registrationSuccess = await handleSubmit(event, firstName, lastName, email, password, confirmPassword);
+      if (registrationSuccess) {
+        navigate('/login');
+      }
+    }
+  };
 
-    if (registrationSuccess) {
-      navigate('/login');
+  const handleGoogleRegister = async () => {
+    try {
+      await loginWithGoogle();
+      setIsGoogleRegister(true);
+    } catch (error) {
+      console.error("Google login failed", error);
     }
   };
 
@@ -53,56 +72,67 @@ function RegisterView() {
       <Header />
       <div className="form-container">
         <h2>Create an Account</h2>
+        
+        {!isGoogleRegister && (
+          <button className="google-register-button" onClick={handleGoogleRegister}>
+            Register with Google
+          </button>
+        )}
+
         <form onSubmit={enhancedHandleSubmit}>
-          <label htmlFor="first-name">First Name</label>
-          <input
-            type="text"
-            id="first-name"
-            name="firstName"
-            value={firstName}
-            onChange={handleInputChange}
-            required
-          />
+          {!isGoogleRegister && (
+            <>
+              <label htmlFor="first-name">First Name</label>
+              <input
+                type="text"
+                id="first-name"
+                name="firstName"
+                value={firstName}
+                onChange={handleInputChange}
+                required
+              />
 
-          <label htmlFor="last-name">Last Name</label>
-          <input
-            type="text"
-            id="last-name"
-            name="lastName"
-            value={lastName}
-            onChange={handleInputChange}
-            required
-          />
+              <label htmlFor="last-name">Last Name</label>
+              <input
+                type="text"
+                id="last-name"
+                name="lastName"
+                value={lastName}
+                onChange={handleInputChange}
+                required
+              />
 
-          <label htmlFor="email">Email</label>
-          <input
-            type="email"
-            id="email"
-            name="email"
-            value={email}
-            onChange={handleInputChange}
-            required
-          />
+              <label htmlFor="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={email}
+                onChange={handleInputChange}
+                required
+              />
 
-          <label htmlFor="password">Password</label>
-          <input
-            type="password"
-            id="password"
-            name="password"
-            value={password}
-            onChange={handleInputChange}
-            required
-          />
+              <label htmlFor="password">Password</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={password}
+                onChange={handleInputChange}
+                required
+              />
 
-          <label htmlFor="confirm-password">Confirm Password</label>
-          <input
-            type="password"
-            id="confirm-password"
-            name="confirmPassword"
-            value={confirmPassword}
-            onChange={handleInputChange}
-            required
-          />
+              <label htmlFor="confirm-password">Confirm Password</label>
+              <input
+                type="password"
+                id="confirm-password"
+                name="confirmPassword"
+                value={confirmPassword}
+                onChange={handleInputChange}
+                required
+              />
+            </>
+          )}
 
           <h2>Select Genres</h2>
           <div id="genre-div" className="genre-div">
