@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useApplicationContext } from '../context/ApplicationContext';
 import Header from '../components/Header';
-import { db } from '../firebase';
+import { firestore } from '../firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 function CartView() {
@@ -28,7 +28,7 @@ function CartView() {
       localStorage.removeItem('cart');
       localStorage.removeItem('purchasedMovies');
 
-      const userRef = doc(db, 'users', currentUser.id);
+      const userRef = doc(firestore, 'users', currentUser.id);
       const purchasedMovies = cart.map((movie) => movie.id);
 
       await updateDoc(userRef, {
