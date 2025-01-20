@@ -1,13 +1,12 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useApplicationContext } from "../context/ApplicationContext"; // Updated import
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useApplicationContext } from '../context/ApplicationContext';
+import axios from 'axios';
 
 function Feature() {
   const [movies, setMovies] = useState([]);
   const navigate = useNavigate();
-  const { addToCart, currentUser, getCart } = useApplicationContext(); // Updated context usage
-  const cart = getCart();
+  const { addToCart, currentUser, cart } = useApplicationContext();
 
   function shuffle(array) {
     let currentIndex = array.length;
@@ -24,27 +23,32 @@ function Feature() {
 
   const handleAddToCart = (movie) => {
     if (!currentUser) {
-      alert("You need to be logged in to add movies to your cart.");
+      alert('You need to be logged in to add movies to your cart.');
       return;
     }
-    addToCart(movie);
+    addToCart(movie); // Call the updated addToCart function
   };
 
   const isMovieInCart = (movieId) => {
-    return cart.some((item) => item.id === movieId);
+    return Array.isArray(cart) && cart.some((item) => item.id === movieId);
   };
 
   useEffect(() => {
     (async function getMovies() {
-      const response = await axios.get(
-        `https://api.themoviedb.org/3/movie/now_playing?api_key=${import.meta.env.VITE_TMDB_KEY}`
-      );
-      const moviesList = [];
-      shuffle(response.data.results);
-      for (let i = 0; i < 10; i++) {
-        moviesList.push(response.data.results.pop());
+      try {
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/movie/now_playing?api_key=${import.meta.env.VITE_TMDB_KEY}`
+        );
+        const moviesList = [];
+        shuffle(response.data.results);
+        for (let i = 0; i < 10; i++) {
+          moviesList.push(response.data.results.pop());
+        }
+        setMovies(moviesList);
+      } catch (error) {
+        console.error('Error fetching movies:', error);
+        alert('Failed to fetch movies. Please try again later.');
       }
-      setMovies(moviesList);
     })();
   }, []);
 
@@ -64,7 +68,7 @@ function Feature() {
               className="buy-button"
               onClick={() => handleAddToCart(movie)}
             >
-              {isMovieInCart(movie.id) ? "Added" : "Buy"}
+              {isMovieInCart(movie.id) ? 'Added' : 'Buy'}
             </button>
           </div>
         ))}

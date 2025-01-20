@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApplicationContext } from '../context/ApplicationContext';
 import Header from "../components/Header";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 
 function LoginView() {
   const navigate = useNavigate();
-  const { loginUser, errorMessage, login } = useApplicationContext();
+  const { login, loginWithGoogle, errorMessage } = useApplicationContext();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,18 +30,31 @@ function LoginView() {
   const handleLogin = async (event) => {
     event.preventDefault();
 
-    if (!firstName || !lastName || !email || !password) {
+    if (!email || !password || !firstName || !lastName) {
       alert("All fields are required.");
       return;
     }
 
-    const success = await loginUser(email, password);
+    const success = await login(email, password);
 
     if (success) {
-      login();
       navigate('/');
     } else {
       alert("Invalid login credentials. Please try again.");
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const success = await loginWithGoogle();
+      if (success) {
+        navigate('/');
+      } else {
+        alert("Google login failed. Please register first.");
+      }
+    } catch (error) {
+      console.error('Google login failed:', error);
+      alert('Google login failed. Please try again.');
     }
   };
 
@@ -48,6 +63,12 @@ function LoginView() {
       <Header />
       <div className="form-container">
         <h2>Login to Your Account</h2>
+
+        <button className="google-register-button" onClick={handleGoogleLogin}>
+          <FontAwesomeIcon icon={faGoogle} size="lg" />
+          <span>Login with Google</span>
+        </button>
+
         <form onSubmit={handleLogin}>
           <label htmlFor="first-name">First Name</label>
           <input

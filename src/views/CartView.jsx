@@ -1,14 +1,49 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useApplicationContext } from '../context/ApplicationContext';
 import Header from '../components/Header';
+import { db } from '../firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 function CartView() {
-  const { currentUser, getCart, removeFromCart } = useApplicationContext();
+  const { currentUser, getCart, removeFromCart, isMoviePurchased } = useApplicationContext();
   const cart = getCart();
+  const navigate = useNavigate();
+
+  const loadMovie = (id) => {
+    navigate(`/movies/${id}`);
+  };
 
   const handleRemoveFromCart = (movieId) => {
     removeFromCart(movieId);
+  };
+
+  const handleCheckout = async () => {
+    if (!currentUser) {
+      alert('You need to be logged in to complete the purchase.');
+      return;
+    }
+
+    try {
+      localStorage.removeItem('cart');
+      localStorage.removeItem('purchasedMovies');
+
+      const userRef = doc(db, 'users', currentUser.id);
+      const purchasedMovies = cart.map((movie) => movie.id);
+
+      await updateDoc(userRef, {
+        purchasedMovies: arrayUnion(...purchasedMovies),
+      });
+
+      cart.forEach((movie) => removeFromCart(movie.id));
+
+      alert('Thank you for your purchase!');
+
+      navigate('/');
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      alert('An error occurred during checkout. Please try again.');
+    }
   };
 
   return (
@@ -33,7 +68,7 @@ function CartView() {
                 ) : (
                   <img
                     className="posterPicture"
-                    src=""
+                    src="https://via.placeholder.com/200x300?text=No+Poster"
                     alt="No poster available"
                   />
                 )}
@@ -51,6 +86,12 @@ function CartView() {
         )
       ) : (
         <p>Please <Link to="/login">log in</Link> to access your cart.</p>
+      )}
+
+      {cart.length > 0 && (
+        <button className="checkout-button" onClick={handleCheckout}>
+          Checkout
+        </button>
       )}
     </div>
   );

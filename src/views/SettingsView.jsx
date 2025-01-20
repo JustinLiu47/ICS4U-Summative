@@ -32,30 +32,46 @@ function SettingsView() {
     selectedGenres,
     handleGenreChange,
     errorMessage,
+    getPastPurchases,
   } = useApplicationContext();
 
   const [firstName, setFirstName] = useState(currentUser?.firstName || '');
   const [lastName, setLastName] = useState(currentUser?.lastName || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pastPurchases, setPastPurchases] = useState([]);
 
   useEffect(() => {
     if (currentUser) {
       setFirstName(currentUser.firstName || '');
       setLastName(currentUser.lastName || '');
+      getPastPurchases(currentUser.uid)
+        .then((purchases) => setPastPurchases(purchases))
+        .catch((err) => console.error("Failed to fetch purchases: ", err));
     }
-  }, [currentUser]);
+  }, [currentUser, getPastPurchases]);
 
   if (!currentUser) {
     return <p>Please log in to update your profile.</p>;
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (selectedGenres.length < 10) {
-      alert('Please select at least 10 genres.');
+
+    if (password !== confirmPassword) {
+      alert("Passwords do not match.");
       return;
     }
 
-    if (currentUser) {
+    if (currentUser.email && password) {
+      updateUserDetails({
+        firstName,
+        lastName,
+        email: currentUser.email,
+        password,
+        selectedGenres,
+      });
+    } else {
       updateUserDetails({
         firstName,
         lastName,
@@ -87,6 +103,23 @@ function SettingsView() {
             required
           />
 
+          {currentUser.email && (
+            <>
+              <label>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <label>Confirm Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </>
+          )}
+
           <h2>Select Genres</h2>
           <div id="genre-div" className="genre-div">
             {genreList.map(({ id, genre }) => (
@@ -112,6 +145,13 @@ function SettingsView() {
             Save Changes
           </button>
         </form>
+
+        <h2>Your Past Purchases</h2>
+        <ul>
+          {pastPurchases.map((purchase) => (
+            <li key={purchase.id}>{purchase.title}</li>
+          ))}
+        </ul>
       </div>
     </div>
   );
