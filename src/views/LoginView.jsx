@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../firebase';
+import { useApplicationContext } from '../context/ApplicationContext';
 import Header from "../components/Header";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
@@ -11,6 +10,7 @@ function LoginView() {
   const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const { loginWithGoogle, loginWithEmail } = useApplicationContext();
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,9 +27,7 @@ function LoginView() {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email.current.value, password);
-      const user = userCredential.user;
-
+      await loginWithEmail(email.current.value, password);
       navigate('/');
     } catch (error) {
       switch (error.code) {
@@ -52,24 +50,13 @@ function LoginView() {
     }
   };
 
-  const loginByGoogle = async () => {
-    try {
-      const user = (await signInWithPopup(auth, new GoogleAuthProvider())).user;
-
-      navigate('/');
-    } catch (error) {
-      console.error('Google login error: ', error.message);
-      setErrorMessage("Error signing in with Google!");
-    }
-  };
-
   return (
     <div className="login-container">
       <Header />
       <div className="form-container">
         <h2>Login to Your Account</h2>
 
-        <button className="google-register-button" onClick={loginByGoogle}>
+        <button className="google-register-button" onClick={loginWithGoogle}>
           <FontAwesomeIcon icon={faGoogle} size="lg" />
           <span>Login with Google</span>
         </button>

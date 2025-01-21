@@ -3,10 +3,14 @@ import { Navigate } from 'react-router-dom';
 import { useApplicationContext } from '../context/ApplicationContext';
 
 const PrivateRoute = ({ children }) => {
-  const { isLoggedIn } = useApplicationContext();
+  const { authState } = useApplicationContext();
+  const { isLoggedIn } = authState;
+
+  console.log("PrivateRoute: isLoggedIn =", isLoggedIn);
 
   if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
+    console.log("PrivateRoute: User is not logged in, redirecting to /login");
+    return <Navigate to="/login" />;
   }
 
   return children;

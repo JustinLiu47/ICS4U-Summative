@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useApplicationContext } from '../context/ApplicationContext';
 import Header from "../components/Header";
 
@@ -25,37 +24,51 @@ const genreList = [
 ];
 
 function SettingsView() {
-  const navigate = useNavigate();
-  const {
-    authState,
-    updateUserDetails,
-    genreList,
-    updateGenre,
-    getPastPurchases,
-  } = useApplicationContext();
-  const { currentUser } = authState || {};
+  const { currentUser, updateUserDetails, getPastPurchases } = useApplicationContext();
 
-  const [firstName, setFirstName] = useState(currentUser?.firstName || '');
-  const [lastName, setLastName] = useState(currentUser?.lastName || '');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pastPurchases, setPastPurchases] = useState([]);
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentUser) {
-      setFirstName(currentUser.firstName || '');
-      setLastName(currentUser.lastName || '');
-      getPastPurchases(currentUser.uid)
-        .then((purchases) => setPastPurchases(purchases))
-        .catch((err) => console.error("Failed to fetch purchases: ", err));
-      setSelectedGenres(currentUser.selectedGenres || []);
-    }
-  }, [currentUser, getPastPurchases]);
+    console.log("SettingsView useEffect triggered");
 
-  if (!currentUser) {
-    return <p>Please log in to update your profile.</p>;
-  }
+    if (!currentUser) {
+      console.log("No current user found, checking localStorage...");
+      
+      const storedAuthState = localStorage.getItem('authState');
+      if (storedAuthState) {
+        const authStateFromLocalStorage = JSON.parse(storedAuthState);
+        setFirstName(authStateFromLocalStorage.currentUser?.firstName || '');
+        setLastName(authStateFromLocalStorage.currentUser?.lastName || '');
+        setSelectedGenres(authStateFromLocalStorage.currentUser?.selectedGenres || []);
+      }
+
+      setLoading(false);
+      return;
+    }
+
+    console.log("Current user:", currentUser);
+    setFirstName(currentUser.firstName || '');
+    setLastName(currentUser.lastName || '');
+    setSelectedGenres(currentUser.selectedGenres || []);
+
+    getPastPurchases(currentUser.uid)
+      .then((purchases) => {
+        console.log("Past purchases:", purchases);
+        setPastPurchases(purchases);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch purchases:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [currentUser, getPastPurchases]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -65,21 +78,25 @@ function SettingsView() {
       return;
     }
 
-    if (currentUser.email && password) {
-      updateUserDetails({
-        firstName,
-        lastName,
-        email: currentUser.email,
-        password,
-        selectedGenres,
-      });
-    } else {
-      updateUserDetails({
+    if (currentUser && currentUser.email) {
+      const updatedDetails = {
         firstName,
         lastName,
         email: currentUser.email,
         selectedGenres,
-      });
+      };
+
+      if (password) {
+        updatedDetails.password = password;
+      }
+
+      try {
+        await updateUserDetails(updatedDetails);
+        alert("Profile updated successfully!");
+      } catch (error) {
+        console.error("Failed to update profile:", error);
+        alert("Failed to update profile. Please try again.");
+      }
     }
   };
 
@@ -90,6 +107,18 @@ function SettingsView() {
         : [...prevSelectedGenres, id]
     );
   };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!currentUser) {
+    return <div>No user data available. Please log in.</div>;
+  }
+
+  const isGoogleUser = currentUser.providerData.some(
+    (provider) => provider.providerId === 'google.com'
+  );
 
   return (
     <div>
@@ -103,6 +132,7 @@ function SettingsView() {
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
+            readOnly={isGoogleUser}
           />
 
           <label>Last Name</label>
@@ -111,9 +141,10 @@ function SettingsView() {
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
+            readOnly={isGoogleUser}
           />
 
-          {currentUser.email && (
+          {!isGoogleUser && (
             <>
               <label>Password</label>
               <input
@@ -156,11 +187,28 @@ function SettingsView() {
         </form>
 
         <h2>Your Past Purchases</h2>
-        <ul>
-          {pastPurchases.map((purchase) => (
-            <li key={purchase.id}>{purchase.title}</li>
+        <div className="cart-grid">
+          {pastPurchases.map((movie) => (
+            <div key={movie.id} className="cart-item">
+              <div className="movie-info">
+                <h2 className="movie-title">{movie.title}</h2>
+              </div>
+              {movie.poster_path ? (
+                <img
+                  className="posterPicture"
+                  src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
+                  alt={movie.title}
+                />
+              ) : (
+                <img
+                  className="posterPicture"
+                  src="https://via.placeholder.com/200x300?text=No+Poster"
+                  alt="No poster available"
+                />
+              )}
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );

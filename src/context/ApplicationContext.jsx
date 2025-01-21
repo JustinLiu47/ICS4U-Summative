@@ -1,7 +1,7 @@
 import React, { createContext, useReducer, useContext, useEffect } from 'react';
-import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, updateProfile, updatePassword } from 'firebase/auth';
 import { auth, firestore } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { Map } from 'immutable';
 
 const initialState = {
@@ -35,12 +35,17 @@ export const ApplicationProvider = ({ children }) => {
 
   const setAuthState = (payload) => {
     dispatch({ type: 'SET_AUTH_STATE', payload });
-    localStorage.setItem('authState', JSON.stringify(payload));
+    localStorage.setItem('authState', JSON.stringify(payload));  // Persist state in localStorage
   };
 
   const setCart = (cart) => {
     dispatch({ type: 'SET_CART', payload: cart });
-    localStorage.setItem('cart', JSON.stringify(cart));
+    localStorage.setItem('cart', JSON.stringify(cart));  // Persist cart in localStorage
+  };
+
+  const setPurchasedMovies = (purchasedMovies) => {
+    dispatch({ type: 'SET_PURCHASED_MOVIES', payload: purchasedMovies });
+    localStorage.setItem('purchasedMovies', JSON.stringify([...purchasedMovies]));  // Persist purchased movies
   };
 
   const addToCart = (movie) => {
@@ -70,7 +75,10 @@ export const ApplicationProvider = ({ children }) => {
         errorMessage: '',
         selectedGenres: [],
         purchasedMovies: Map(),
+        cart: [],
       });
+      localStorage.removeItem('cart');  // Clear cart from localStorage on logout
+      localStorage.removeItem('purchasedMovies');  // Clear purchased movies from localStorage on logout
     } catch (error) {
       console.error('Logout error:', error.message);
     }
@@ -90,7 +98,7 @@ export const ApplicationProvider = ({ children }) => {
           lastName: user.displayName?.split(' ')[1] || '',
           email: user.email,
           selectedGenres: [],
-          purchaseHistory: [],
+          purchasedMovies: [],
         });
       }
       const userData = userDoc.exists() ? userDoc.data() : {};
@@ -100,10 +108,32 @@ export const ApplicationProvider = ({ children }) => {
         currentUser: { ...user, ...userData },
         errorMessage: '',
         selectedGenres: userData.selectedGenres || [],
-        purchasedMovies: Map(userData.purchaseHistory.map(id => [id, true])),
       });
+      setPurchasedMovies(Map((userData.purchasedMovies || []).map(id => [id, true]))); // Ensure purchasedMovies is an array
     } catch (error) {
       console.error('Google login error:', error.message);
+      setAuthState({ errorMessage: error.message });
+    }
+  };
+
+  const loginWithEmail = async (email, password) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.exists() ? userDoc.data() : {};
+
+      setAuthState({
+        isLoggedIn: true,
+        currentUser: { ...user, ...userData },
+        errorMessage: '',
+        selectedGenres: userData.selectedGenres || [],
+      });
+      setPurchasedMovies(Map((userData.purchasedMovies || []).map(id => [id, true]))); // Ensure purchasedMovies is an array
+    } catch (error) {
+      console.error('Email login error:', error.message);
       setAuthState({ errorMessage: error.message });
     }
   };
@@ -145,25 +175,125 @@ export const ApplicationProvider = ({ children }) => {
     }
   };
 
+  const getPastPurchases = async (userId) => {
+    try {
+      const userDocRef = doc(firestore, 'users', userId);
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.exists() ? userDoc.data() : {};
+      return userData.purchasedMovies || [];
+    } catch (error) {
+      console.error('Error fetching past purchases:', error.message);
+      return [];
+    }
+  };
+
+  const updateUserDetails = async (details) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("No authenticated user found");
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      await updateDoc(userDocRef, {
+        firstName: details.firstName,
+        lastName: details.lastName,
+        selectedGenres: details.selectedGenres,
+      });
+
+      if (details.password) {
+        await updatePassword(user, details.password);
+      }
+
+      await updateProfile(user, {
+        displayName: `${details.firstName} ${details.lastName}`,
+      });
+
+      setAuthState({
+        ...state,
+        currentUser: {
+          ...state.currentUser,
+          firstName: details.firstName,
+          lastName: details.lastName,
+          selectedGenres: details.selectedGenres,
+        },
+      });
+    } catch (error) {
+      console.error('Error updating user details:', error.message);
+      throw error;
+    }
+  };
+
+  const handleCheckout = async () => {
+    if (!state.currentUser) {
+      alert('You need to be logged in to complete the purchase.');
+      return;
+    }
+
+    try {
+      const userRef = doc(firestore, 'users', state.currentUser.uid);
+      const purchasedMovies = state.cart.map((movie) => movie.id);
+
+      await updateDoc(userRef, {
+        purchasedMovies: arrayUnion(...purchasedMovies),
+      });
+
+      const updatedPurchasedMovies = Map([...state.purchasedMovies, ...purchasedMovies.map(id => [id, true])]);
+      setPurchasedMovies(updatedPurchasedMovies);
+      setCart([]);
+      alert('Thank you for your purchase!');
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      alert('An error occurred during checkout. Please try again.');
+    }
+  };
+
+  // Check for the persisted state in localStorage when the app loads
+  useEffect(() => {
+    const storedAuthState = localStorage.getItem('authState');
+    const storedCart = localStorage.getItem('cart');
+    const storedPurchasedMovies = localStorage.getItem('purchasedMovies');
+    if (storedAuthState) {
+      const authState = JSON.parse(storedAuthState);
+      if (authState.isLoggedIn && authState.currentUser) {
+        console.log("Loaded authState from localStorage:", authState);
+        setAuthState(authState);
+        setPurchasedMovies(Map((authState.currentUser.purchasedMovies || []).map(id => [id, true])));
+      }
+    }
+    if (storedCart) {
+      setCart(JSON.parse(storedCart));
+    }
+    if (storedPurchasedMovies) {
+      setPurchasedMovies(Map(JSON.parse(storedPurchasedMovies)));
+    }
+  }, []);
+
+  // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userData = await fetchUserDetails(user);
-        setAuthState({
-          isLoggedIn: true,
-          currentUser: { ...user, ...userData },
-          errorMessage: '',
-          selectedGenres: userData.selectedGenres || [],
-          purchasedMovies: Map(userData.purchaseHistory.map(id => [id, true])), // Set purchasedMovies on auth state change
-        });
+        if (userData) {
+          console.log("Auth state changed: User logged in:", userData);
+          setAuthState({
+            isLoggedIn: true,
+            currentUser: { ...user, ...userData },
+            errorMessage: '',
+            selectedGenres: userData.selectedGenres || [],
+          });
+          setPurchasedMovies(Map((userData.purchasedMovies || []).map(id => [id, true])));
+        }
       } else {
+        console.log("Auth state changed: No user is logged in");
         setAuthState({
           isLoggedIn: false,
           currentUser: null,
           errorMessage: '',
           selectedGenres: [],
           purchasedMovies: Map(),
+          cart: [],
         });
+        localStorage.removeItem('cart');  // Clear cart from localStorage on logout
+        localStorage.removeItem('purchasedMovies');  // Clear purchased movies from localStorage on logout
       }
     });
 
@@ -181,8 +311,12 @@ export const ApplicationProvider = ({ children }) => {
         removeFromCart,
         logout,
         loginWithGoogle,
+        loginWithEmail,
         updateGenre,
         isMoviePurchased,
+        handleCheckout,
+        getPastPurchases,  // Provide getPastPurchases in the context
+        updateUserDetails,  // Provide updateUserDetails in the context
       }}
     >
       {children}
