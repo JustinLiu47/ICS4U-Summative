@@ -6,7 +6,7 @@ import axios from 'axios';
 function Feature() {
   const [movies, setMovies] = useState([]);
   const navigate = useNavigate();
-  const { addToCart, currentUser, cart } = useApplicationContext();
+  const { addToCart, currentUser, cart, isMoviePurchased } = useApplicationContext();
 
   function shuffle(array) {
     let currentIndex = array.length;
@@ -24,6 +24,10 @@ function Feature() {
   const handleAddToCart = (movie) => {
     if (!currentUser) {
       alert('You need to be logged in to add movies to your cart.');
+      return;
+    }
+    if (isMoviePurchased(movie.id)) {
+      alert("You've already purchased this movie.");
       return;
     }
     addToCart(movie);
@@ -67,8 +71,9 @@ function Feature() {
             <button
               className="buy-button"
               onClick={() => handleAddToCart(movie)}
+              disabled={isMovieInCart(movie.id) || isMoviePurchased(movie.id)}
             >
-              {isMovieInCart(movie.id) ? 'Added' : 'Buy'}
+              {isMoviePurchased(movie.id) ? 'Purchased' : isMovieInCart(movie.id) ? 'Added' : 'Buy'}
             </button>
           </div>
         ))}

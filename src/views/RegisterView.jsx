@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile, fetchSignInMethodsForEmail } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  updateProfile,
+  fetchSignInMethodsForEmail,
+} from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, firestore } from '../firebase';
 import Header from "../components/Header";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
-import { useApplicationContext } from '../context/ApplicationContext';
 
 const genreList = [
   { genre: "Action", id: 28 },
@@ -27,12 +32,11 @@ const genreList = [
   { genre: "Documentary", id: 99 },
   { genre: "Mystery", id: 9648 },
   { genre: "Drama", id: 18 },
-  { genre: "Romance", id: 10749 }
+  { genre: "Romance", id: 10749 },
 ];
 
 function RegisterView() {
   const navigate = useNavigate();
-  const { setAuthState } = useApplicationContext();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -59,6 +63,14 @@ function RegisterView() {
     }));
   };
 
+  const validateGenres = () => {
+    if (formData.selectedGenres.length < 10) {
+      setErrorMessage("Please select at least 10 genres to proceed.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     const { firstName, lastName, email, password, confirmPassword, selectedGenres } = formData;
@@ -68,8 +80,7 @@ function RegisterView() {
       return;
     }
 
-    if (selectedGenres.length < 10) {
-      setErrorMessage("Please select at least 10 genres to proceed.");
+    if (!validateGenres()) {
       return;
     }
 
@@ -94,20 +105,28 @@ function RegisterView() {
       });
 
       setSuccessMessage("Registration successful! Redirecting to login page...");
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
+      setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
-      console.error('Registration error: ', error.message);
+      console.error('Registration error:', error.message);
       setErrorMessage(error.message);
     }
   };
 
   const handleGoogleRegister = async () => {
+    if (!validateGenres()) {
+      return;
+    }
+
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      const signInMethods = await fetchSignInMethodsForEmail(auth, user.email);
+      if (signInMethods.length > 0) {
+        setErrorMessage("This Google account is already registered. Please log in.");
+        return;
+      }
 
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -116,17 +135,15 @@ function RegisterView() {
           firstName: user.displayName?.split(' ')[0] || '',
           lastName: user.displayName?.split(' ')[1] || '',
           email: user.email,
-          selectedGenres: [],
+          selectedGenres: formData.selectedGenres,
           purchaseHistory: [],
         });
       }
 
       setSuccessMessage("Registration successful! Redirecting to login page...");
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
+      setTimeout(() => navigate('/login'), 3000);
     } catch (error) {
-      console.error('Google registration error: ', error.message);
+      console.error('Google registration error:', error.message);
       setErrorMessage(error.message);
     }
   };

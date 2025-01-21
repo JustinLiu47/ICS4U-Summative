@@ -26,11 +26,11 @@ function HomeView() {
     { genre: "Documentary", id: 99 },
     { genre: "Mystery", id: 9648 },
     { genre: "Drama", id: 18 },
-    { genre: "Romance", id: 10749 }
+    { genre: "Romance", id: 10749 },
   ];
 
-  const filteredGenres = genreList.filter(genre =>
-    selectedGenres.includes(genre.id)
+  const filteredGenres = genreList.filter((genre) =>
+    (selectedGenres || []).includes(genre.id)
   );
 
   return (

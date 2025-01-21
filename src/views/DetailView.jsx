@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"; 
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useApplicationContext } from "../context/ApplicationContext";
+import { useApplicationContext } from '../context/ApplicationContext';
 
 function DetailView() {
   const [movie, setMovie] = useState({});
   const [error, setError] = useState(null);
   const params = useParams();
   const navigate = useNavigate();
-  const { currentUser, addToCart, isMovieInCart, isMoviePurchased } = useApplicationContext();
+  const { addToCart, currentUser, cart, isMoviePurchased } = useApplicationContext();
 
   useEffect(() => {
     const getMovie = async () => {
@@ -27,15 +27,19 @@ function DetailView() {
   }, [params.id]);
 
   const handleAddToCart = () => {
-    if (currentUser) {
-      if (isMoviePurchased(movie.id)) {
-        alert("You've already purchased this movie.");
-        return;
-      }
-      addToCart(movie);
-    } else {
-      navigate("/login");
+    if (!currentUser) {
+      alert('You need to be logged in to add movies to your cart.');
+      return;
     }
+    if (isMoviePurchased(movie.id)) {
+      alert("You've already purchased this movie.");
+      return;
+    }
+    addToCart(movie);
+  };
+
+  const isMovieInCart = (movieId) => {
+    return Array.isArray(cart) && cart.some((item) => item.id === movieId);
   };
 
   const handleGoToCart = () => {
@@ -45,15 +49,16 @@ function DetailView() {
   return (
     <div className="movie-detail">
       {error && <p className="error-message">{error}</p>}
-      
+
       {!error && movie && (
         <>
           <h1 className="movie-title">{movie.original_title}</h1>
           <button
             className="buy-button-detail"
             onClick={handleAddToCart}
+            disabled={isMovieInCart(movie.id) || isMoviePurchased(movie.id)}
           >
-            {isMovieInCart(movie.id) ? "Added" : "Buy"}
+            {isMoviePurchased(movie.id) ? 'Purchased' : isMovieInCart(movie.id) ? 'Added' : 'Buy'}
           </button>
 
           {isMovieInCart(movie.id) && (
@@ -68,7 +73,7 @@ function DetailView() {
             <p><strong>Runtime:</strong> {movie.runtime} minutes</p>
             <p><strong>Popularity:</strong> {movie.popularity}</p>
           </div>
-          
+
           <div className="poster-section">
             {movie.poster_path ? (
               <img

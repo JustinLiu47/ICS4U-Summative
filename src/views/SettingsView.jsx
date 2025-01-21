@@ -27,19 +27,20 @@ const genreList = [
 function SettingsView() {
   const navigate = useNavigate();
   const {
-    currentUser,
+    authState,
     updateUserDetails,
-    selectedGenres,
-    handleGenreChange,
-    errorMessage,
+    genreList,
+    updateGenre,
     getPastPurchases,
   } = useApplicationContext();
+  const { currentUser } = authState || {};
 
   const [firstName, setFirstName] = useState(currentUser?.firstName || '');
   const [lastName, setLastName] = useState(currentUser?.lastName || '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pastPurchases, setPastPurchases] = useState([]);
+  const [selectedGenres, setSelectedGenres] = useState([]);
 
   useEffect(() => {
     if (currentUser) {
@@ -48,6 +49,7 @@ function SettingsView() {
       getPastPurchases(currentUser.uid)
         .then((purchases) => setPastPurchases(purchases))
         .catch((err) => console.error("Failed to fetch purchases: ", err));
+      setSelectedGenres(currentUser.selectedGenres || []);
     }
   }, [currentUser, getPastPurchases]);
 
@@ -79,6 +81,14 @@ function SettingsView() {
         selectedGenres,
       });
     }
+  };
+
+  const handleGenreChange = (id) => {
+    setSelectedGenres((prevSelectedGenres) =>
+      prevSelectedGenres.includes(id)
+        ? prevSelectedGenres.filter((genreId) => genreId !== id)
+        : [...prevSelectedGenres, id]
+    );
   };
 
   return (
@@ -135,7 +145,6 @@ function SettingsView() {
               </label>
             ))}
           </div>
-          {errorMessage && <p className="error">{errorMessage}</p>}
 
           <button
             type="submit"

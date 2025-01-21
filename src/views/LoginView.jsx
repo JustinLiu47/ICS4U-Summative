@@ -1,89 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, firestore } from '../firebase';
+import { auth } from '../firebase';
 import Header from "../components/Header";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
-import { useApplicationContext } from '../context/ApplicationContext';
 
 function LoginView() {
+  const email = useRef('');
   const navigate = useNavigate();
-  const { setAuthState } = useApplicationContext();
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-    if (name === 'email') {
-      setEmail(value);
-    } else if (name === 'password') {
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'password') {
       setPassword(value);
     }
   };
 
-  const handleLogin = async (event) => {
+  const emailLogIn = async (event) => {
     event.preventDefault();
-
-    if (!email || !password) {
-      alert("Email and password are required.");
+    if (!email.current.value || !password) {
+      setErrorMessage("Please provide both email and password.");
       return;
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email.current.value, password);
       const user = userCredential.user;
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const userData = userDoc.exists() ? userDoc.data() : {};
-
-      const updatedState = {
-        isLoggedIn: true,
-        currentUser: { ...user, ...userData },
-        errorMessage: '',
-      };
-      localStorage.setItem('authState', JSON.stringify(updatedState));
-      setAuthState(updatedState);
       navigate('/');
     } catch (error) {
-      console.error('Login error: ', error.message);
-      setErrorMessage(error.message);
+      switch (error.code) {
+        case "auth/user-not-found":
+          setErrorMessage("No user found with this email. Please check your email or register.");
+          break;
+        case "auth/wrong-password":
+          setErrorMessage("Incorrect password. Please try again.");
+          break;
+        case "auth/invalid-email":
+          setErrorMessage("The email address is not valid. Please check and try again.");
+          break;
+        case "auth/invalid-credential":
+          setErrorMessage("No user/password combination found. Please check your email and password or register.");
+          break;
+        default:
+          console.error("Unexpected error code:", error.code);
+          setErrorMessage(`An unexpected error occurred: ${error.message}`);
+      }
     }
   };
 
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
+  const loginByGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      const user = (await signInWithPopup(auth, new GoogleAuthProvider())).user;
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (!userDoc.exists()) {
-        await setDoc(userDocRef, {
-          firstName: user.displayName?.split(' ')[0] || '',
-          lastName: user.displayName?.split(' ')[1] || '',
-          email: user.email,
-          selectedGenres: [],
-          purchaseHistory: [],
-        });
-      }
-      const userData = userDoc.exists() ? userDoc.data() : {};
-
-      const updatedState = {
-        isLoggedIn: true,
-        currentUser: { ...user, ...userData },
-        errorMessage: '',
-      };
-      localStorage.setItem('authState', JSON.stringify(updatedState));
-      setAuthState(updatedState);
       navigate('/');
     } catch (error) {
       console.error('Google login error: ', error.message);
-      setErrorMessage(error.message);
+      setErrorMessage("Error signing in with Google!");
     }
   };
 
@@ -93,19 +69,19 @@ function LoginView() {
       <div className="form-container">
         <h2>Login to Your Account</h2>
 
-        <button className="google-register-button" onClick={handleGoogleLogin}>
+        <button className="google-register-button" onClick={loginByGoogle}>
           <FontAwesomeIcon icon={faGoogle} size="lg" />
           <span>Login with Google</span>
         </button>
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={emailLogIn}>
           <label htmlFor="email">Email</label>
           <input
             type="email"
             id="email"
             name="email"
-            value={email}
-            onChange={handleInputChange}
+            placeholder="Email"
+            ref={email}
             required
           />
 
@@ -114,6 +90,7 @@ function LoginView() {
             type="password"
             id="password"
             name="password"
+            placeholder="Password"
             value={password}
             onChange={handleInputChange}
             required
@@ -125,7 +102,7 @@ function LoginView() {
         </form>
 
         <p className="register-link">
-          New to Netflix?
+          New to Netflix?{' '}
           <span className="register-link-text" onClick={() => navigate('/register')}>
             Register now
           </span>

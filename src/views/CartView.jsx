@@ -6,8 +6,7 @@ import { firestore } from '../firebase';
 import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 
 function CartView() {
-  const { currentUser, getCart, removeFromCart, isMoviePurchased } = useApplicationContext();
-  const cart = getCart();
+  const { currentUser, cart, setCart, removeFromCart } = useApplicationContext();
   const navigate = useNavigate();
 
   const loadMovie = (id) => {
@@ -25,20 +24,15 @@ function CartView() {
     }
 
     try {
-      localStorage.removeItem('cart');
-      localStorage.removeItem('purchasedMovies');
-
-      const userRef = doc(firestore, 'users', currentUser.id);
+      const userRef = doc(firestore, 'users', currentUser.uid);
       const purchasedMovies = cart.map((movie) => movie.id);
 
       await updateDoc(userRef, {
         purchasedMovies: arrayUnion(...purchasedMovies),
       });
 
-      cart.forEach((movie) => removeFromCart(movie.id));
-
+      setCart([]);
       alert('Thank you for your purchase!');
-
       navigate('/');
     } catch (error) {
       console.error("Error during checkout:", error);
@@ -47,52 +41,54 @@ function CartView() {
   };
 
   return (
-    <div className="cart-container">
+    <div className="outer-container">
       <Header />
-      <h1>Your Cart</h1>
-      {currentUser ? (
-        cart.length > 0 ? (
-          <div className="cart-grid">
-            {cart.map((movie) => (
-              <div key={movie.id} className="cart-item">
-                <div className="movie-info">
-                  <h2 className="movie-title">{movie.title}</h2>
+      <div className="cart-container">
+        <h1>Your Cart</h1>
+        {currentUser ? (
+          cart.length > 0 ? (
+            <div className="cart-grid">
+              {cart.map((movie) => (
+                <div key={movie.id} className="cart-item">
+                  <div className="movie-info">
+                    <h2 className="movie-title">{movie.title}</h2>
+                  </div>
+                  {movie.poster_path ? (
+                    <img
+                      className="posterPicture"
+                      src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
+                      alt={movie.title}
+                      onClick={() => loadMovie(movie.id)}
+                    />
+                  ) : (
+                    <img
+                      className="posterPicture"
+                      src="https://via.placeholder.com/200x300?text=No+Poster"
+                      alt="No poster available"
+                    />
+                  )}
+                  <button
+                    className="remove-button"
+                    onClick={() => handleRemoveFromCart(movie.id)}
+                  >
+                    Remove
+                  </button>
                 </div>
-                {movie.poster_path ? (
-                  <img
-                    className="posterPicture"
-                    src={`https://image.tmdb.org/t/p/original${movie.poster_path}`}
-                    alt={movie.title}
-                    onClick={() => loadMovie(movie.id)}
-                  />
-                ) : (
-                  <img
-                    className="posterPicture"
-                    src="https://via.placeholder.com/200x300?text=No+Poster"
-                    alt="No poster available"
-                  />
-                )}
-                <button
-                  className="remove-button"
-                  onClick={() => handleRemoveFromCart(movie.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p>Your cart is empty. <Link to="/">Return Home</Link>.</p>
+          )
         ) : (
-          <p>Your cart is empty. <Link to="/">Return Home</Link>.</p>
-        )
-      ) : (
-        <p>Please <Link to="/login">log in</Link> to access your cart.</p>
-      )}
+          <p>Please <Link to="/login">log in</Link> to access your cart.</p>
+        )}
 
-      {cart.length > 0 && (
-        <button className="checkout-button" onClick={handleCheckout}>
-          Checkout
-        </button>
-      )}
+        {cart.length > 0 && (
+          <button className="checkout-button" onClick={handleCheckout}>
+            Checkout
+          </button>
+        )}
+      </div>
     </div>
   );
 }

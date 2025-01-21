@@ -1,44 +1,79 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useReducer, useContext, useEffect } from 'react';
 import { onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth, firestore } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { Map } from 'immutable';
 
+const initialState = {
+  isLoggedIn: false,
+  currentUser: null,
+  errorMessage: '',
+  cart: [],
+  purchasedMovies: Map(),
+  selectedGenres: [],
+};
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case 'SET_AUTH_STATE':
+      return { ...state, ...action.payload };
+    case 'SET_CART':
+      return { ...state, cart: action.payload };
+    case 'SET_PURCHASED_MOVIES':
+      return { ...state, purchasedMovies: action.payload };
+    case 'SET_ERROR_MESSAGE':
+      return { ...state, errorMessage: action.payload };
+    default:
+      return state;
+  }
+};
+
 const ApplicationContext = createContext();
 
 export const ApplicationProvider = ({ children }) => {
-  const [authState, setAuthState] = useState(() => {
-    const storedAuthState = localStorage.getItem('authState');
-    return storedAuthState ? JSON.parse(storedAuthState) : { isLoggedIn: false, currentUser: null, errorMessage: '' };
-  });
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState(Map());
-  const [purchasedMovies, setPurchasedMovies] = useState(Map());
-  const [genreList, setGenreList] = useState([
-    { name: "Action", id: 28, selected: false },
-    { name: "Horror", id: 27, selected: false },
-    { name: "TV", id: 10770, selected: false },
-    { name: "Crime", id: 80, selected: false },
-    { name: "Adventure", id: 12, selected: false },
-    { name: "Family", id: 10751, selected: false },
-    { name: "Music", id: 10402, selected: false },
-    { name: "Thriller", id: 53, selected: false },
-    { name: "Animation", id: 16, selected: false },
-    { name: "Fantasy", id: 14, selected: false },
-    { name: "Mystery", id: 9648, selected: false },
-    { name: "War", id: 10752, selected: false },
-  ]);
+  const setAuthState = (payload) => {
+    dispatch({ type: 'SET_AUTH_STATE', payload });
+    localStorage.setItem('authState', JSON.stringify(payload));
+  };
+
+  const setCart = (cart) => {
+    dispatch({ type: 'SET_CART', payload: cart });
+    localStorage.setItem('cart', JSON.stringify(cart));
+  };
+
+  const addToCart = (movie) => {
+    const updatedCart = [...state.cart, movie];
+    setCart(updatedCart);
+  };
+
+  const getCart = () => {
+    return state.cart;
+  };
+
+  const isMoviePurchased = (movieId) => {
+    return state.purchasedMovies.has(movieId);
+  };
+
+  const removeFromCart = (movieId) => {
+    const updatedCart = state.cart.filter((movie) => movie.id !== movieId);
+    setCart(updatedCart);
+  };
 
   const logout = async () => {
-    await signOut(auth);
-    const updatedState = {
-      isLoggedIn: false,
-      currentUser: null,
-      errorMessage: '',
-    };
-    setAuthState(updatedState);
-    localStorage.removeItem('authState');
+    try {
+      await signOut(auth);
+      setAuthState({
+        isLoggedIn: false,
+        currentUser: null,
+        errorMessage: '',
+        selectedGenres: [],
+        purchasedMovies: Map(),
+      });
+    } catch (error) {
+      console.error('Logout error:', error.message);
+    }
   };
 
   const loginWithGoogle = async () => {
@@ -60,138 +95,94 @@ export const ApplicationProvider = ({ children }) => {
       }
       const userData = userDoc.exists() ? userDoc.data() : {};
 
-      const updatedState = {
+      setAuthState({
         isLoggedIn: true,
         currentUser: { ...user, ...userData },
         errorMessage: '',
-      };
-      localStorage.setItem('authState', JSON.stringify(updatedState));
-      setAuthState(updatedState);
-    } catch (error) {
-      console.error('Google login error: ', error.message);
-      setAuthState({
-        isLoggedIn: false,
-        currentUser: null,
-        errorMessage: error.message,
+        selectedGenres: userData.selectedGenres || [],
+        purchasedMovies: Map(userData.purchaseHistory.map(id => [id, true])),
       });
+    } catch (error) {
+      console.error('Google login error:', error.message);
+      setAuthState({ errorMessage: error.message });
+    }
+  };
+
+  const updateGenre = async (genre) => {
+    try {
+      const updatedGenres = state.genreList.map((item) =>
+        item.id === genre.id ? { ...item, selected: !item.selected } : item
+      );
+
+      if (state.currentUser) {
+        const selectedGenreIds = updatedGenres
+          .filter((g) => g.selected)
+          .map((g) => g.id);
+
+        const userDocRef = doc(firestore, 'users', state.currentUser.uid);
+        await updateDoc(userDocRef, { selectedGenres: selectedGenreIds });
+
+        setAuthState({
+          ...state,
+          selectedGenres: selectedGenreIds,
+        });
+      }
+
+      dispatch({ type: 'SET_AUTH_STATE', payload: { genreList: updatedGenres } });
+    } catch (error) {
+      console.error('Failed to update genres:', error.message);
+    }
+  };
+
+  const fetchUserDetails = async (user) => {
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      return userDoc.exists() ? userDoc.data() : null;
+    } catch (error) {
+      console.error('Error fetching user details:', error.message);
+      return null;
     }
   };
 
   useEffect(() => {
-    const fetchPurchasedMovies = async (user) => {
-      if (!user) return;
-      const docRef = doc(firestore, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.purchasedMovies) {
-          const stringKeyObject = Object.entries(data.purchasedMovies).reduce(
-            (acc, [key, val]) => {
-              acc[String(key)] = val;
-              return acc;
-            },
-            {}
-          );
-          setPurchasedMovies(Map(stringKeyObject));
-          console.log("Fetched purchasedMovies:", stringKeyObject);
-        } else {
-          setPurchasedMovies(Map());
-        }
-      } else {
-        setPurchasedMovies(Map());
-      }
-    };
-
-    const fetchGenres = async (user) => {
-      if (!user) return;
-      const docRef = doc(firestore, "users", user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.selectedGenres) {
-          const selectedGenreIds = data.selectedGenres;
-          setGenreList((prevList) =>
-            prevList.map((genre) => ({
-              ...genre,
-              selected: selectedGenreIds.includes(genre.id),
-            }))
-          );
-          console.log("Fetched selected genres:", selectedGenreIds);
-        }
-      }
-    };
-
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        const userData = userDoc.exists() ? userDoc.data() : {};
-        const updatedState = {
+        const userData = await fetchUserDetails(user);
+        setAuthState({
           isLoggedIn: true,
           currentUser: { ...user, ...userData },
           errorMessage: '',
-        };
-        setAuthState(updatedState);
-        localStorage.setItem('authState', JSON.stringify(updatedState));
-
-        await fetchPurchasedMovies(user);
-        await fetchGenres(user);
+          selectedGenres: userData.selectedGenres || [],
+          purchasedMovies: Map(userData.purchaseHistory.map(id => [id, true])), // Set purchasedMovies on auth state change
+        });
       } else {
         setAuthState({
           isLoggedIn: false,
           currentUser: null,
           errorMessage: '',
+          selectedGenres: [],
+          purchasedMovies: Map(),
         });
-        localStorage.removeItem('authState');
-        setCart(Map());
-        setPurchasedMovies(Map());
       }
-      setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
-  const selectedGenres = genreList
-    .filter((genre) => genre.selected)
-    .map((genre) => genre.id);
-
-  const updateGenre = async (genre) => {
-    setGenreList((prevList) => {
-      const newList = prevList.map((item) =>
-        item.id === genre.id ? { ...item, selected: !item.selected } : item
-      );
-
-      if (authState.currentUser) {
-        const selectedGenreIds = newList
-          .filter((g) => g.selected)
-          .map((g) => g.id);
-
-        const userDocRef = doc(firestore, "users", authState.currentUser.uid);
-        updateDoc(userDocRef, { selectedGenres: selectedGenreIds })
-          .then(() => console.log("Updated selectedGenres in Firestore"))
-          .catch((err) => console.error("Failed to update selectedGenres:", err));
-      }
-      return newList;
-    });
-  };
-
   return (
     <ApplicationContext.Provider
       value={{
-        authState,
+        ...state,
         setAuthState,
-        selectedGenres,
-        genreList,
-        updateGenre,
+        setCart,
+        addToCart,
+        getCart,
+        removeFromCart,
         logout,
         loginWithGoogle,
-        cart,
-        setCart,
-        purchasedMovies,
-        setPurchasedMovies,
-        loading,
+        updateGenre,
+        isMoviePurchased,
       }}
     >
       {children}

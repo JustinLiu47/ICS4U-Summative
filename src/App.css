@@ -649,8 +649,22 @@ form input:focus {
   font-size: 1.1rem;
   font-weight: normal;
 }
+
+.outer-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .cart-container {
   padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cart-container h1 {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 .cart-grid {
@@ -660,22 +674,64 @@ form input:focus {
 }
 
 .cart-item {
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: #1c1c1c;
+  border: 1px solid #333;
   padding: 10px;
   text-align: center;
   border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.cart-item .movie-info {
+  margin-bottom: 10px;
+}
+
+.cart-item .movie-title {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+.cart-item img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.cart-item img:hover {
+  transform: scale(1.05);
 }
 
 .remove-button {
-  background-color: red;
+  background-color: #e50914;
   color: white;
-  padding: 5px 10px;
+  padding: 10px;
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 .remove-button:hover {
-  background-color: darkred;
+  background-color: #f40612;
+}
+
+.checkout-button {
+  display: block;
+  width: 100%;
+  max-width: 300px;
+  margin: 20px auto;
+  padding: 15px;
+  background-color: #28a745;
+  color: white;
+  font-size: 1.2rem;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.checkout-button:hover {
+  background-color: #218838;
 }
