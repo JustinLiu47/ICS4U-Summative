@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApplicationContext } from '../context/ApplicationContext';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, firestore } from '../firebase';
 import Header from "../components/Header";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
+import { useApplicationContext } from '../context/ApplicationContext';
 
 function LoginView() {
   const navigate = useNavigate();
-  const { login, loginWithGoogle, errorMessage } = useApplicationContext();
-
+  const { setAuthState } = useApplicationContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -20,41 +21,69 @@ function LoginView() {
       setEmail(value);
     } else if (name === 'password') {
       setPassword(value);
-    } else if (name === 'firstName') {
-      setFirstName(value);
-    } else if (name === 'lastName') {
-      setLastName(value);
     }
   };
 
   const handleLogin = async (event) => {
     event.preventDefault();
 
-    if (!email || !password || !firstName || !lastName) {
-      alert("All fields are required.");
+    if (!email || !password) {
+      alert("Email and password are required.");
       return;
     }
 
-    const success = await login(email, password);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-    if (success) {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      const userData = userDoc.exists() ? userDoc.data() : {};
+
+      const updatedState = {
+        isLoggedIn: true,
+        currentUser: { ...user, ...userData },
+        errorMessage: '',
+      };
+      localStorage.setItem('authState', JSON.stringify(updatedState));
+      setAuthState(updatedState);
       navigate('/');
-    } else {
-      alert("Invalid login credentials. Please try again.");
+    } catch (error) {
+      console.error('Login error: ', error.message);
+      setErrorMessage(error.message);
     }
   };
 
   const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
     try {
-      const success = await loginWithGoogle();
-      if (success) {
-        navigate('/');
-      } else {
-        alert("Google login failed. Please register first.");
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          firstName: user.displayName?.split(' ')[0] || '',
+          lastName: user.displayName?.split(' ')[1] || '',
+          email: user.email,
+          selectedGenres: [],
+          purchaseHistory: [],
+        });
       }
+      const userData = userDoc.exists() ? userDoc.data() : {};
+
+      const updatedState = {
+        isLoggedIn: true,
+        currentUser: { ...user, ...userData },
+        errorMessage: '',
+      };
+      localStorage.setItem('authState', JSON.stringify(updatedState));
+      setAuthState(updatedState);
+      navigate('/');
     } catch (error) {
-      console.error('Google login failed:', error);
-      alert('Google login failed. Please try again.');
+      console.error('Google login error: ', error.message);
+      setErrorMessage(error.message);
     }
   };
 
@@ -70,26 +99,6 @@ function LoginView() {
         </button>
 
         <form onSubmit={handleLogin}>
-          <label htmlFor="first-name">First Name</label>
-          <input
-            type="text"
-            id="first-name"
-            name="firstName"
-            value={firstName}
-            onChange={handleInputChange}
-            required
-          />
-
-          <label htmlFor="last-name">Last Name</label>
-          <input
-            type="text"
-            id="last-name"
-            name="lastName"
-            value={lastName}
-            onChange={handleInputChange}
-            required
-          />
-
           <label htmlFor="email">Email</label>
           <input
             type="email"

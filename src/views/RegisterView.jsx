@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApplicationContext } from '../context/ApplicationContext';
+import { createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, updateProfile, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, firestore } from '../firebase';
 import Header from "../components/Header";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGoogle } from '@fortawesome/free-brands-svg-icons';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { useApplicationContext } from '../context/ApplicationContext';
 
 const genreList = [
   { genre: "Action", id: 28 },
@@ -29,70 +32,102 @@ const genreList = [
 
 function RegisterView() {
   const navigate = useNavigate();
-  const {
-    firstName,
-    lastName,
-    email,
-    password,
-    confirmPassword,
-    errorMessage,
-    setErrorMessage,
-    handleInputChange,
-    handleGenreChange,
-    handleSubmit,
-    loginWithGoogle,
-    selectedGenres,
-    isRegisteringWithGoogle,
-    setIsRegisteringWithGoogle,
-  } = useApplicationContext();
+  const { setAuthState } = useApplicationContext();
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    selectedGenres: [],
+  });
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isRegisteringWithGoogle, setIsRegisteringWithGoogle] = useState(false);
 
-  const handleGoogleRegister = () => {
-    setIsRegisteringWithGoogle(true);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleEmailRegister = () => {
-    setIsRegisteringWithGoogle(false);
+  const handleGenreChange = (id) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedGenres: prev.selectedGenres.includes(id)
+        ? prev.selectedGenres.filter((genreId) => genreId !== id)
+        : [...prev.selectedGenres, id],
+    }));
   };
 
-  const enhancedHandleSubmit = async (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
+    const { firstName, lastName, email, password, confirmPassword, selectedGenres } = formData;
 
-    if (isRegisteringWithGoogle) {
-      try {
-        await loginWithGoogle();
-        const registrationSuccess = await handleSubmit(
-          event,
-          firstName,
-          lastName,
-          email,
-          password,
-          confirmPassword,
-          selectedGenres
-        );
+    if (password !== confirmPassword) {
+      setErrorMessage("Passwords do not match!");
+      return;
+    }
 
-        if (registrationSuccess) {
-          setErrorMessage("");
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('Google registration failed: ', error);
-        setErrorMessage("Google login failed. Please try again.");
+    if (selectedGenres.length < 10) {
+      setErrorMessage("Please select at least 10 genres to proceed.");
+      return;
+    }
+
+    try {
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+      if (signInMethods.length > 0) {
+        setErrorMessage("This email is already registered. Please use a different email.");
+        return;
       }
-    } else {
-      const registrationSuccess = await handleSubmit(
-        event,
+
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await updateProfile(user, { displayName: `${firstName} ${lastName}` });
+
+      await setDoc(doc(firestore, "users", user.uid), {
         firstName,
         lastName,
         email,
-        password,
-        confirmPassword,
-        selectedGenres
-      );
+        selectedGenres,
+        purchaseHistory: [],
+      });
 
-      if (registrationSuccess) {
-        setErrorMessage("");
-        navigate('/');
+      setSuccessMessage("Registration successful! Redirecting to login page...");
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+    } catch (error) {
+      console.error('Registration error: ', error.message);
+      setErrorMessage(error.message);
+    }
+  };
+
+  const handleGoogleRegister = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          firstName: user.displayName?.split(' ')[0] || '',
+          lastName: user.displayName?.split(' ')[1] || '',
+          email: user.email,
+          selectedGenres: [],
+          purchaseHistory: [],
+        });
       }
+
+      setSuccessMessage("Registration successful! Redirecting to login page...");
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+    } catch (error) {
+      console.error('Google registration error: ', error.message);
+      setErrorMessage(error.message);
     }
   };
 
@@ -103,12 +138,12 @@ function RegisterView() {
         <h2>Create an Account</h2>
 
         <div className="register-method-buttons">
-          <button className="google-register-button" onClick={handleGoogleRegister}>
+          <button className="google-register-button" onClick={() => setIsRegisteringWithGoogle(true)}>
             <FontAwesomeIcon icon={faGoogle} size="lg" />
             <span>Register with Google</span>
           </button>
 
-          <button className="google-register-button" onClick={handleEmailRegister}>
+          <button className="google-register-button" onClick={() => setIsRegisteringWithGoogle(false)}>
             <FontAwesomeIcon icon={faEnvelope} size="lg" />
             <span>Register with Email</span>
           </button>
@@ -123,72 +158,68 @@ function RegisterView() {
                 name="genre"
                 value={id}
                 onChange={() => handleGenreChange(id)}
-                checked={selectedGenres.includes(id)}
+                checked={formData.selectedGenres.includes(id)}
               />
               {genre}
             </label>
           ))}
         </div>
 
-        {(isRegisteringWithGoogle || !isRegisteringWithGoogle) && (
-          <form onSubmit={enhancedHandleSubmit}>
-            {!isRegisteringWithGoogle && (
-              <>
-                <label htmlFor="first-name">First Name</label>
-                <input
-                  type="text"
-                  id="first-name"
-                  name="firstName"
-                  value={firstName}
-                  onChange={handleInputChange}
-                  required
-                />
+        {isRegisteringWithGoogle ? (
+          <button className="register-button" onClick={handleGoogleRegister}>
+            Register with Google
+          </button>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <label htmlFor="first-name">First Name</label>
+            <input
+              type="text"
+              id="first-name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleInputChange}
+              required
+            />
 
-                <label htmlFor="last-name">Last Name</label>
-                <input
-                  type="text"
-                  id="last-name"
-                  name="lastName"
-                  value={lastName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </>
-            )}
+            <label htmlFor="last-name">Last Name</label>
+            <input
+              type="text"
+              id="last-name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleInputChange}
+              required
+            />
 
-            {!isRegisteringWithGoogle && (
-              <>
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={email}
-                  onChange={handleInputChange}
-                  required
-                />
+            <label htmlFor="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              required
+            />
 
-                <label htmlFor="password">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={password}
-                  onChange={handleInputChange}
-                  required
-                />
+            <label htmlFor="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              required
+            />
 
-                <label htmlFor="confirm-password">Confirm Password</label>
-                <input
-                  type="password"
-                  id="confirm-password"
-                  name="confirmPassword"
-                  value={confirmPassword}
-                  onChange={handleInputChange}
-                  required
-                />
-              </>
-            )}
+            <label htmlFor="confirm-password">Confirm Password</label>
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              required
+            />
 
             <button type="submit" className="register-button">
               Register
@@ -197,6 +228,7 @@ function RegisterView() {
         )}
 
         {errorMessage && <p className="error">{errorMessage}</p>}
+        {successMessage && <p className="success">{successMessage}</p>}
 
         <p className="login-link">
           Already have an account?

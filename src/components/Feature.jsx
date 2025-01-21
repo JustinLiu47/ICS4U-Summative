@@ -26,7 +26,7 @@ function Feature() {
       alert('You need to be logged in to add movies to your cart.');
       return;
     }
-    addToCart(movie); // Call the updated addToCart function
+    addToCart(movie);
   };
 
   const isMovieInCart = (movieId) => {
